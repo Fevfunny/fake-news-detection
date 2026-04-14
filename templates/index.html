@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Fake News Detection</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>📰 FakeNewsDetection</h1>
+            <div class="user-info">
+                <span>Welcome, {{ username }}!</span>
+                <a href="{{ url_for('logout') }}" class="logout-btn">Logout</a>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="nav">
+            <a href="/dashboard" class="active">Dashboard</a>
+            <a href="/reports">Reports</a>
+            <a href="/settings">Settings</a>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <h2>Fake News Detection System</h2>
+            <p>Analyze news articles to determine if they are real or fake.</p>
+
+            {% if not model_loaded %}
+            <div class="model-warning">
+                ⚠️ Model not loaded. Using keyword-based detection.
+            </div>
+            {% endif %}
+
+            <!-- Input Form -->
+            <div class="input-section">
+                <form action="/analyze" method="POST">
+                    <label for="news">Enter News Article:</label>
+                    <textarea name="news_article" id="news" rows="6" placeholder="Paste your news article here...">{{ news_text if news_text else '' }}</textarea>
+                    <button type="submit" class="analyze-btn">Analyze</button>
+                </form>
+                {% with messages = get_flashed_messages() %}
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="error">{{ message }}</div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+            </div>
+
+            <!-- Analysis Result -->
+            {% if result %}
+            <div class="credibility-section">
+                <h3>Article Credibility:</h3>
+                <div class="result-box {% if result == 'REAL NEWS' %}real-result{% else %}fake-result{% endif %}">
+                    <h4>Article Result: {{ result }}</h4>
+                    <p>{{ message }}</p>
+                    {% if confidence %}
+                    <p class="confidence">Confidence: {{ confidence }}%</p>
+                    {% endif %}
+                </div>
+
+                <!-- Related Fact Checks -->
+                <div class="fact-checks">
+                    <h4>Related Fact Checks:</h4>
+                    <div class="fact-item">
+                        <p>🔍 Fact Check: Research Supports Coffee Bean Benefits</p>
+                    </div>
+                    <div class="fact-item">
+                        <p>🔍 Study Confirms Health Benefits of Moderate Coffee Consumption</p>
+                    </div>
+                    <div class="fact-item">
+                        <p>🔍 Experts Verify Coffee Study as Credible</p>
+                    </div>
+                </div>
+
+                <!-- Feedback -->
+                <div class="feedback">
+                    <p>Is this result accurate?</p>
+                    <div>
+                        <button class="yes-btn" onclick="selectYes()">Yes</button>
+                        <button class="no-btn" onclick="selectNo()">No</button>
+                    </div>
+                    <button class="submit-feedback" onclick="submitFeedback()">Submit Feedback</button>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Analysis History -->
+            {% if history %}
+            <div class="history-section">
+                <h3>Recent Analysis History</h3>
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>Article</th>
+                            <th>Result</th>
+                            <th>Confidence</th>
+                            <th>Date</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in history %}
+                        <tr>
+                            <td>{{ item.article_text }}</td>
+                            <td class="{% if item.result == 'REAL NEWS' %}real-text{% else %}fake-text{% endif %}">
+                                {{ item.result }}
+                            </td>
+                            <td>{{ "%.1f"|format(item.confidence) }}%</td>
+                            <td>{{ item.analyzed_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>
+                                <a href="{{ url_for('delete_analysis', analysis_id=item.id) }}" 
+                                    class="delete-btn"
+                                    onclick="return confirm('Delete this record?')">Delete</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+
+            <!-- Total Analyzed -->
+            <div class="stats-footer">
+                <p>Total articles analyzed: <strong>{{ total }}</strong></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedFeedback = null;
+        
+        function selectYes() {
+            selectedFeedback = 'yes';
+            document.querySelector('.yes-btn').classList.add('selected');
+            document.querySelector('.no-btn').classList.remove('selected');
+        }
+        
+        function selectNo() {
+            selectedFeedback = 'no';
+            document.querySelector('.no-btn').classList.add('selected');
+            document.querySelector('.yes-btn').classList.remove('selected');
+        }
+        
+        function submitFeedback() {
+            if (selectedFeedback) {
+                alert('Thank you for your feedback!');
+            } else {
+                alert('Please select Yes or No first');
+            }
+        }
+    </script>
+</body>
+</html>
