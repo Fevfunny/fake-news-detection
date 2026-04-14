@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - Fake News Detection</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>📰 FakeNewsDetection</h1>
+            <div class="user-info">
+                <span>Welcome, {{ username }}!</span>
+                <a href="{{ url_for('logout') }}" class="logout-btn">Logout</a>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="nav">
+            <a href="/dashboard">Dashboard</a>
+            <a href="/reports">Reports</a>
+            <a href="/settings" class="active">Settings</a>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <h2>⚙️ Settings</h2>
+            <p>Manage your account preferences and application settings.</p>
+
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="success-message">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <!-- Account Settings -->
+            <div class="settings-section">
+                <h3>Account Settings</h3>
+                <form method="POST" action="/settings" class="settings-form">
+                    <div class="form-group">
+                        <label for="username">Username</label>
+                        <input type="text" id="username" value="{{ username }}" disabled>
+                        <small>Username cannot be changed</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="email">Email Address</label>
+                        <input type="email" id="email" name="email" value="{{ email }}" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="new_password">New Password</label>
+                        <input type="password" id="new_password" name="new_password" 
+                                placeholder="Leave blank to keep current">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="confirm_password">Confirm New Password</label>
+                        <input type="password" id="confirm_password" name="confirm_password" 
+                                placeholder="Confirm new password">
+                    </div>
+
+                    <button type="submit" class="save-btn">Save Changes</button>
+                </form>
+            </div>
+
+            <!-- Preferences -->
+            <div class="settings-section">
+                <h3>Preferences</h3>
+                <form method="POST" action="/settings/preferences" class="settings-form">
+                    <div class="checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="dark_mode"> Enable Dark Mode
+                        </label>
+                        <small>Coming soon: Dark theme for the application</small>
+                    </div>
+
+                    <div class="checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="auto_save" checked> Auto-save analysis history
+                        </label>
+                        <small>Automatically save all your analyses</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="default_view">Default Dashboard View</label>
+                        <select id="default_view" name="default_view" class="settings-select">
+                            <option value="recent">Recent Analyses</option>
+                            <option value="stats">Statistics Only</option>
+                            <option value="both" selected>Both (Current)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="confidence_threshold">Minimum Confidence Threshold</label>
+                        <input type="range" id="confidence_threshold" name="confidence_threshold" 
+                                min="50" max="99" value="70" class="slider">
+                        <span id="threshold_value">70%</span>
+                        <small>Results below this threshold will be marked as uncertain</small>
+                    </div>
+
+                    <button type="submit" class="save-btn">Save Preferences</button>
+                </form>
+            </div>
+
+            <!-- Danger Zone -->
+            <div class="settings-section danger-zone">
+                <h3>⚠️ Danger Zone</h3>
+                
+                <div class="danger-item">
+                    <div>
+                        <h4>Clear All Data</h4>
+                        <p>Permanently delete all your analysis history</p>
+                    </div>
+                    <a href="/reports/clear" class="danger-btn" 
+                        onclick="return confirm('Are you sure? This cannot be undone!')">
+                        Clear History
+                    </a>
+                </div>
+
+                <div class="danger-item">
+                    <div>
+                        <h4>Delete Account</h4>
+                        <p>Permanently delete your account and all data</p>
+                    </div>
+                    <form method="POST" action="/settings/delete_account" 
+                            onsubmit="return confirm('Are you absolutely sure? This will delete everything permanently!')">
+                        <button type="submit" class="danger-btn">Delete Account</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- About Section -->
+            <div class="settings-section">
+                <h3>About</h3>
+                <div class="about-info">
+                    <p><strong>Fake News Detection System</strong></p>
+                    <p>Version: 1.0.0</p>
+                    <p>Machine Learning Model: Logistic Regression</p>
+                    <p>Training Data: Trained on 50,000+ articles</p>
+                    <p>Last Updated: March 2026</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var slider = document.getElementById('confidence_threshold');
+        var output = document.getElementById('threshold_value');
+        
+        if (slider) {
+            slider.oninput = function() {
+                output.textContent = this.value + '%';
+            };
+        }
+
+        var form = document.querySelector('form[action="/settings"]');
+        if (form) {
+            form.onsubmit = function(e) {
+                var newPass = document.getElementById('new_password').value;
+                var confirmPass = document.getElementById('confirm_password').value;
+                
+                if (newPass && newPass !== confirmPass) {
+                    e.preventDefault();
+                    alert('New passwords do not match!');
+                }
+            };
+        }
+    </script>
+</body>
+</html>

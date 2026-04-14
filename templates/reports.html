@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports - Fake News Detection</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>📰 FakeNewsDetection</h1>
+            <div class="user-info">
+                <span>Welcome, {{ username }}!</span>
+                <a href="{{ url_for('logout') }}" class="logout-btn">Logout</a>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="nav">
+            <a href="/dashboard">Dashboard</a>
+            <a href="/reports" class="active">Reports</a>
+            <a href="/settings">Settings</a>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <h2>📊 Analysis Reports</h2>
+            <p>View detailed statistics and insights from your news analysis history.</p>
+
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="success-message">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <!-- Stats Cards -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">📰</div>
+                    <div class="stat-details">
+                        <h3>Total Analyzed</h3>
+                        <p class="stat-number">{{ total }}</p>
+                        <p class="stat-label">articles</p>
+                    </div>
+                </div>
+                
+                <div class="stat-card fake-stat">
+                    <div class="stat-icon">❌</div>
+                    <div class="stat-details">
+                        <h3>Fake News</h3>
+                        <p class="stat-number">{{ fake_count }}</p>
+                        <p class="stat-label">{{ fake_percent }}% of total</p>
+                    </div>
+                </div>
+                
+                <div class="stat-card real-stat">
+                    <div class="stat-icon">✅</div>
+                    <div class="stat-details">
+                        <h3>Real News</h3>
+                        <p class="stat-number">{{ real_count }}</p>
+                        <p class="stat-label">{{ real_percent }}% of total</p>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon">📈</div>
+                    <div class="stat-details">
+                        <h3>Avg Confidence</h3>
+                        <p class="stat-number">{{ avg_confidence }}%</p>
+                        <p class="stat-label">overall accuracy</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Section -->
+            <div class="charts-section">
+                <div class="chart-container">
+                    <h3>Last 7 Days Activity</h3>
+                    <canvas id="activityChart"></canvas>
+                </div>
+                
+                <div class="chart-container">
+                    <h3>Fake vs Real Distribution</h3>
+                    <canvas id="pieChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Keywords Section -->
+            <div class="keywords-section">
+                <h3>🔍 Top Keywords in Your Analyses</h3>
+                <div class="keywords-grid">
+                    <div class="keywords-box fake-box">
+                        <h4>In Fake News:</h4>
+                        <div class="keyword-list">
+                            {% if fake_keywords %}
+                                {% for word, count in fake_keywords %}
+                                    <span class="keyword-tag fake-tag">{{ word }} ({{ count }})</span>
+                                {% endfor %}
+                            {% else %}
+                                <p>No fake news analyzed yet</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="keywords-box real-box">
+                        <h4>In Real News:</h4>
+                        <div class="keyword-list">
+                            {% if real_keywords %}
+                                {% for word, count in real_keywords %}
+                                    <span class="keyword-tag real-tag">{{ word }} ({{ count }})</span>
+                                {% endfor %}
+                            {% else %}
+                                <p>No real news analyzed yet</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Export Actions -->
+            <div class="export-section">
+                <h3>📤 Export Data</h3>
+                <div class="export-buttons">
+                    <a href="/reports/export" class="export-btn" download="analysis_report.json">
+                        Download JSON Report
+                    </a>
+                    <button onclick="copyReport()" class="export-btn">Copy Summary</button>
+                    <a href="/reports/clear" class="delete-btn" 
+                        onclick="return confirm('Clear all analysis history? This cannot be undone!')">  
+                        Clear All History
+                    </a>
+                </div>
+            </div>
+
+            <!-- Recent Activity Table -->
+            {% if history %}
+            <div class="history-section">
+                <h3>Recent Analysis History</h3>
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>Article</th>
+                            <th>Result</th>
+                            <th>Confidence</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in history %}
+                        <tr>
+                            <td>{{ item.article_text }}</td>
+                            <td class="{% if item.result == 'REAL NEWS' %}real-text{% else %}fake-text{% endif %}">
+                                {{ item.result }}
+                            </td>
+                            <td>{{ "%.1f"|format(item.confidence) }}%</td>
+                            <td>{{ item.analyzed_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Fetch data from API
+        fetch('/api/chart-data')
+            .then(response => response.json())
+            .then(data => {
+                // Prepare chart data
+                var chartLabels = [];
+                var fakeData = [];
+                var realData = [];
+                
+                for (var i = 0; i < data.last_7_days.length; i++) {
+                    chartLabels.push(data.last_7_days[i].date);
+                    fakeData.push(data.last_7_days[i].fake);
+                    realData.push(data.last_7_days[i].real);
+                }
+
+                // Activity Chart
+                var ctx1 = document.getElementById('activityChart').getContext('2d');
+                new Chart(ctx1, {
+                    type: 'line',
+                    data: {
+                        labels: chartLabels,
+                        datasets: [{
+                            label: 'Fake News',
+                            data: fakeData,
+                            borderColor: '#ff4757',
+                            backgroundColor: 'rgba(255, 71, 87, 0.1)',
+                            tension: 0.4
+                        }, {
+                            label: 'Real News',
+                            data: realData,
+                            borderColor: '#2ecc71',
+                            backgroundColor: 'rgba(46, 204, 113, 0.1)',
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top'
+                            }
+                        }
+                    }
+                });
+
+                // Pie Chart
+                var ctx2 = document.getElementById('pieChart').getContext('2d');
+                new Chart(ctx2, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Fake News', 'Real News'],
+                        datasets: [{
+                            data: [data.fake_count, data.real_count],
+                            backgroundColor: ['#ff4757', '#2ecc71'],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom'
+                            }
+                        }
+                    }
+                });
+            })
+            .catch(error => {
+                console.error('Error loading chart data:', error);
+            });
+    });
+
+    function copyReport() {
+        fetch('/api/chart-data')
+            .then(response => response.json())
+            .then(data => {
+                var summary = 'Fake News Detection Report\n' +
+                                'Total Analyzed: ' + data.total + '\n' +
+                                'Fake News: ' + data.fake_count + ' (' + data.fake_percent + '%)\n' +
+                                'Real News: ' + data.real_count + ' (' + data.real_percent + '%)\n' +
+                                'Average Confidence: ' + data.avg_confidence + '%';
+                
+                navigator.clipboard.writeText(summary).then(function() {
+                    alert('Report summary copied to clipboard!');
+                }).catch(function() {
+                    alert('Could not copy to clipboard');
+                });
+            });
+    }
+    </script>
+</body>
+</html>
